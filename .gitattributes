@@ -1,0 +1,2 @@
+# Fins de ligne LF : obligatoires pour les scripts cloud-init (bash)
+* text=auto eol=lf
