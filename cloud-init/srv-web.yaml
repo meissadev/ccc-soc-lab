@@ -13,6 +13,10 @@ write_files:
     content: |
       <!doctype html><html><head><meta charset="utf-8"><title>Kurger Bank</title></head>
       <body><h1>Kurger Bank - serveur web de test (EQ-13)</h1></body></html>
+  # Page de test IDS : sa lecture déclenche "GPL ATTACK_RESPONSE id check returned root"
+  - path: /opt/ccc/www/ids-test.txt
+    content: |
+      uid=0(root) gid=0(root) groups=0(root)
   - path: /opt/ccc/setup.sh
     permissions: "0750"
     content: |
@@ -38,6 +42,9 @@ write_files:
       apt-get update
       apt-get install -y suricata
       sed -i -E 's|^(\s*HOME_NET:).*|\1 "[${home_net}]"|' /etc/suricata/suricata.yaml
+      # Les attaques de test viennent du VPC (lui-même dans HOME_NET) : sans cela,
+      # les règles ET "EXTERNAL_NET -> HOME_NET" ne se déclencheraient jamais.
+      sed -i -E 's|^(\s*EXTERNAL_NET:).*|\1 "any"|' /etc/suricata/suricata.yaml
       sed -i -E "s|^(\s*- interface:) eth0|\1 $IFACE|" /etc/suricata/suricata.yaml
       sed -i -E "s|^IFACE=.*|IFACE=$IFACE|" /etc/default/suricata || true
       suricata-update || true
