@@ -37,7 +37,7 @@ write_files:
       sed -i -E 's/OPENSEARCH_JAVA_OPTS=-Xms[0-9]+[mMgG] -Xmx[0-9]+[mMgG]/OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g/' docker-compose.yml
       grep -n OPENSEARCH_JAVA_OPTS docker-compose.yml
       docker compose -f generate-indexer-certs.yml run --rm generator
-      docker compose up -d
+      for i in 1 2 3 4 5; do docker compose up -d && break; sleep 60; done
 
       cat > /root/ccc-credentials.txt <<'CRED'
       Wazuh dashboard : https://localhost:8443 (via port forwarding SSM)

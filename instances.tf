@@ -107,8 +107,10 @@ resource "aws_instance" "lab" {
   tags = { Name = each.value.name }
 
   lifecycle {
-    # Évite de recréer les machines quand Canonical / AWS publient une nouvelle AMI.
-    ignore_changes = [ami]
+    # Évite de recréer les machines quand Canonical / AWS publient une nouvelle AMI
+    # ou quand un script cloud-init est corrigé alors que le lab tourne.
+    # Pour réinstaller une machine : terraform apply -replace='aws_instance.lab["soc02"]'
+    ignore_changes = [ami, user_data]
   }
 
   depends_on = [

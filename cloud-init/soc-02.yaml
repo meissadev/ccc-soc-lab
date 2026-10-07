@@ -38,6 +38,9 @@ write_files:
       export DEBIAN_FRONTEND=noninteractive
       sysctl --system
       rnd() { openssl rand -hex 16; }
+      # Au 1er démarrage, l'init des bases peut dépasser le délai des healthchecks :
+      # on relance "docker compose up -d" jusqu'à ce que tout soit démarré.
+      compose_up() { for i in 1 2 3 4 5 6 7 8 9 10; do docker compose up -d && return 0; sleep 60; done; return 1; }
 
       # --- Swap 4 Go (filet de sécurité mémoire) ---
       if [ ! -f /swapfile ]; then
@@ -68,8 +71,14 @@ write_files:
       echo "MYSQL_PASSWORD=$(rnd)" >> .env
       echo "MYSQL_ROOT_PASSWORD=$(rnd)" >> .env
       echo "REDIS_PASSWORD=$(rnd)" >> .env
+      # BASE_URL en https => misp-nginx exige ssl/cert.pem + ssl/key.pem (lisible par nginx non-root)
+      mkdir -p ssl
+      openssl req -x509 -subj /CN=localhost -nodes -newkey rsa:2048 -days 365 \
+        -keyout ssl/key.pem -out ssl/cert.pem \
+        -addext "subjectAltName = DNS:localhost, IP:127.0.0.1, IP:10.20.40.20"
+      chmod 644 ssl/key.pem
       docker compose pull
-      docker compose up -d
+      compose_up
 
       # --- Shuffle (démarré, OpenSearch limité à 1 Go) ---
       git clone --depth 1 https://github.com/Shuffle/Shuffle.git /opt/shuffle
@@ -80,7 +89,7 @@ write_files:
       mkdir -p shuffle-database shuffle-apps shuffle-files
       chown -R 1000:1000 shuffle-database
       docker compose pull
-      docker compose up -d
+      compose_up
 
       # --- DFIR-IRIS (préparé : images téléchargées, conteneurs NON démarrés) ---
       git clone --depth 1 -b ${iris_version} https://github.com/dfir-iris/iris-web.git /opt/iris-web
