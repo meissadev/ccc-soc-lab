@@ -1,0 +1,70 @@
+#cloud-config
+# SRV-WEB : nginx de test (Docker) + Suricata (IDS sur l'interface principale)
+# + agent Wazuh vers SOC-01 (${wazuh_manager_ip}) qui lit /var/log/suricata/eve.json.
+# Journal : /var/log/ccc-setup.log
+hostname: srv-web
+preserve_hostname: false
+timezone: Europe/Paris
+package_update: true
+packages: [ca-certificates, curl, gnupg, jq, software-properties-common]
+
+write_files:
+  - path: /opt/ccc/www/index.html
+    content: |
+      <!doctype html><html><head><meta charset="utf-8"><title>Kurger Bank</title></head>
+      <body><h1>Kurger Bank - serveur web de test (EQ-13)</h1></body></html>
+  - path: /opt/ccc/setup.sh
+    permissions: "0750"
+    content: |
+      #!/bin/bash
+      set -euxo pipefail
+      exec >>/var/log/ccc-setup.log 2>&1
+      export DEBIAN_FRONTEND=noninteractive
+      IFACE=$(ip -o -4 route show to default | awk '{print $5}' | head -n1)
+
+      # --- Docker CE + nginx de test ---
+      install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+      chmod a+r /etc/apt/keyrings/docker.asc
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+      apt-get update
+      apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      systemctl enable --now docker
+      docker run -d --name web --restart unless-stopped -p 80:80 \
+        -v /opt/ccc/www:/usr/share/nginx/html:ro nginx:stable
+
+      # --- Suricata (PPA officiel OISF) sur l'interface de l'instance ---
+      add-apt-repository -y ppa:oisf/suricata-stable
+      apt-get update
+      apt-get install -y suricata
+      sed -i -E 's|^(\s*HOME_NET:).*|\1 "[${home_net}]"|' /etc/suricata/suricata.yaml
+      sed -i -E "s|^(\s*- interface:) eth0|\1 $IFACE|" /etc/suricata/suricata.yaml
+      sed -i -E "s|^IFACE=.*|IFACE=$IFACE|" /etc/default/suricata || true
+      suricata-update || true
+      systemctl enable suricata
+      systemctl restart suricata
+
+      # --- Agent Wazuh -> SOC-01 ---
+      curl -fsSL https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import
+      chmod 644 /usr/share/keyrings/wazuh.gpg
+      echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list
+      apt-get update
+      WAZUH_MANAGER="${wazuh_manager_ip}" WAZUH_AGENT_NAME="SRV-WEB" \
+        apt-get install -y wazuh-agent=${wazuh_version}-1
+      apt-mark hold wazuh-agent
+      # Remontée des alertes Suricata : eve.json lu en JSON, règles Suricata natives de Wazuh.
+      {
+        echo "<ossec_config>"
+        echo "  <localfile>"
+        echo "    <log_format>json</log_format>"
+        echo "    <location>/var/log/suricata/eve.json</location>"
+        echo "  </localfile>"
+        echo "</ossec_config>"
+      } >> /var/ossec/etc/ossec.conf
+      systemctl daemon-reload
+      systemctl enable wazuh-agent
+      systemctl restart wazuh-agent
+      touch /opt/ccc/setup.done
+
+runcmd:
+  - [bash, /opt/ccc/setup.sh]

@@ -1,0 +1,107 @@
+#cloud-config
+# SOC-02 : MISP + Shuffle (démarrés) et DFIR-IRIS (préparé, ARRÊTÉ par défaut).
+# Mémoire serrée (8 Go) : swap de 4 Go, heap OpenSearch de Shuffle réduite à 1 Go.
+# Ports hôte : MISP 80/443 | Shuffle 3001/3443 (API 5001) | IRIS 8443 (arrêté).
+# Journal : /var/log/ccc-setup.log - Secrets générés : /root/ccc-credentials.txt
+hostname: soc-02
+preserve_hostname: false
+timezone: Europe/Paris
+package_update: true
+packages: [ca-certificates, curl, git, gnupg, jq, openssl]
+
+write_files:
+  - path: /etc/sysctl.d/99-soc.conf
+    content: |
+      vm.max_map_count=262144
+      vm.swappiness=10
+  - path: /opt/ccc/iris-start.sh
+    permissions: "0750"
+    content: |
+      #!/bin/bash
+      # Démarre DFIR-IRIS à la main. Si la RAM manque, arrêter Shuffle d'abord :
+      #   cd /opt/shuffle && docker compose stop
+      set -e
+      cd /opt/iris-web && docker compose up -d
+      echo "IRIS : https://localhost:8444 (port forwarding SSM 8443 -> 8444)"
+      echo "Mot de passe admin initial : cd /opt/iris-web && docker compose logs app | grep -i 'password'"
+  - path: /opt/ccc/iris-stop.sh
+    permissions: "0750"
+    content: |
+      #!/bin/bash
+      cd /opt/iris-web && docker compose stop
+  - path: /opt/ccc/setup.sh
+    permissions: "0750"
+    content: |
+      #!/bin/bash
+      set -euxo pipefail
+      exec >>/var/log/ccc-setup.log 2>&1
+      export DEBIAN_FRONTEND=noninteractive
+      sysctl --system
+      rnd() { openssl rand -hex 16; }
+
+      # --- Swap 4 Go (filet de sécurité mémoire) ---
+      if [ ! -f /swapfile ]; then
+        fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile
+        echo '/swapfile none swap sw 0 0' >> /etc/fstab
+      fi
+      swapon -a
+
+      # --- Docker CE + plugin compose ---
+      install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+      chmod a+r /etc/apt/keyrings/docker.asc
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+      apt-get update
+      apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      systemctl enable --now docker
+
+      MISP_ADMIN_PW="Misp-$(rnd)"
+      SHUFFLE_OS_PW="Shf-$(rnd)!Aa1"
+
+      # --- MISP (démarré) ---
+      git clone --depth 1 https://github.com/MISP/misp-docker.git /opt/misp-docker
+      cd /opt/misp-docker
+      cp template.env .env
+      sed -i -E "s|^BASE_URL=.*|BASE_URL=https://localhost:9443|" .env
+      sed -i -E "s|^ADMIN_EMAIL=.*|ADMIN_EMAIL=admin@admin.test|" .env
+      sed -i -E "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=$MISP_ADMIN_PW|" .env
+      echo "MYSQL_PASSWORD=$(rnd)" >> .env
+      echo "MYSQL_ROOT_PASSWORD=$(rnd)" >> .env
+      echo "REDIS_PASSWORD=$(rnd)" >> .env
+      docker compose pull
+      docker compose up -d
+
+      # --- Shuffle (démarré, OpenSearch limité à 1 Go) ---
+      git clone --depth 1 https://github.com/Shuffle/Shuffle.git /opt/shuffle
+      cd /opt/shuffle
+      sed -i -E 's/OPENSEARCH_JAVA_OPTS=-Xms[0-9]+[mMgG] -Xmx[0-9]+[mMgG]/OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g/' docker-compose.yml
+      sed -i -E "s|^SHUFFLE_OPENSEARCH_PASSWORD=.*|SHUFFLE_OPENSEARCH_PASSWORD=\"$SHUFFLE_OS_PW\"|" .env
+      sed -i -E "s|^OPENSEARCH_INITIAL_ADMIN_PASSWORD=.*|OPENSEARCH_INITIAL_ADMIN_PASSWORD=\"$SHUFFLE_OS_PW\"|" .env
+      mkdir -p shuffle-database shuffle-apps shuffle-files
+      chown -R 1000:1000 shuffle-database
+      docker compose pull
+      docker compose up -d
+
+      # --- DFIR-IRIS (préparé : images téléchargées, conteneurs NON démarrés) ---
+      git clone --depth 1 -b ${iris_version} https://github.com/dfir-iris/iris-web.git /opt/iris-web
+      cd /opt/iris-web
+      cp .env.model .env
+      while grep -q '__MUST_BE_CHANGED__' .env; do
+        sed -i "0,/__MUST_BE_CHANGED__/s//$(rnd)/" .env
+      done
+      sed -i -E "s|^IRIS_SECRET_KEY=.*|IRIS_SECRET_KEY=$(rnd)$(rnd)|" .env
+      sed -i -E "s|^IRIS_SECURITY_PASSWORD_SALT=.*|IRIS_SECURITY_PASSWORD_SALT=$(rnd)|" .env
+      sed -i -E "s|^INTERFACE_HTTPS_PORT=.*|INTERFACE_HTTPS_PORT=8443|" .env
+      docker compose pull
+
+      {
+        echo "MISP    : https://localhost:9443  admin@admin.test / $MISP_ADMIN_PW"
+        echo "Shuffle : https://localhost:3443  (compte admin créé au premier accès)"
+        echo "          OpenSearch Shuffle : admin / $SHUFFLE_OS_PW"
+        echo "IRIS    : arrêté -> sudo /opt/ccc/iris-start.sh puis https://localhost:8444"
+      } > /root/ccc-credentials.txt
+      chmod 600 /root/ccc-credentials.txt
+      touch /opt/ccc/setup.done
+
+runcmd:
+  - [bash, /opt/ccc/setup.sh]

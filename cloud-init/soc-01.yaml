@@ -1,0 +1,51 @@
+#cloud-config
+# SOC-01 : Wazuh single-node (manager + indexer + dashboard) sous Docker.
+# Fichier rendu par Terraform (templatefile) : ${wazuh_version} est substitué.
+# Journal d'installation : /var/log/ccc-setup.log
+hostname: soc-01
+preserve_hostname: false
+timezone: Europe/Paris
+package_update: true
+packages: [ca-certificates, curl, git, gnupg, jq]
+
+write_files:
+  - path: /etc/sysctl.d/99-wazuh.conf
+    content: |
+      vm.max_map_count=262144
+  - path: /opt/ccc/setup.sh
+    permissions: "0750"
+    content: |
+      #!/bin/bash
+      set -euxo pipefail
+      exec >>/var/log/ccc-setup.log 2>&1
+      export DEBIAN_FRONTEND=noninteractive
+      sysctl --system
+
+      # --- Docker CE + plugin compose (dépôt officiel Docker) ---
+      install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+      chmod a+r /etc/apt/keyrings/docker.asc
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+      apt-get update
+      apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      systemctl enable --now docker
+
+      # --- Wazuh single-node (v${wazuh_version} est un tag du dépôt wazuh-docker) ---
+      git clone --depth 1 -b v${wazuh_version} https://github.com/wazuh/wazuh-docker.git /opt/wazuh-docker
+      cd /opt/wazuh-docker/single-node
+      # Heap de l'indexer limitée à ~1 Go
+      sed -i -E 's/OPENSEARCH_JAVA_OPTS=-Xms[0-9]+[mMgG] -Xmx[0-9]+[mMgG]/OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g/' docker-compose.yml
+      grep -n OPENSEARCH_JAVA_OPTS docker-compose.yml
+      docker compose -f generate-indexer-certs.yml run --rm generator
+      docker compose up -d
+
+      cat > /root/ccc-credentials.txt <<'CRED'
+      Wazuh dashboard : https://localhost:8443 (via port forwarding SSM)
+      Identifiants par défaut wazuh-docker : admin / SecretPassword
+      -> à changer après la première connexion (doc wazuh-docker : "Change the password of Wazuh users").
+      CRED
+      chmod 600 /root/ccc-credentials.txt
+      touch /opt/ccc/setup.done
+
+runcmd:
+  - [bash, /opt/ccc/setup.sh]
