@@ -47,6 +47,19 @@ write_files:
       sed -i -E 's|^(\s*EXTERNAL_NET:).*|\1 "any"|' /etc/suricata/suricata.yaml
       sed -i -E "s|^(\s*- interface:) eth0|\1 $IFACE|" /etc/suricata/suricata.yaml
       sed -i -E "s|^IFACE=.*|IFACE=$IFACE|" /etc/default/suricata || true
+      # Sortie dédiée aux seules alertes, lue par l'agent Wazuh : eve.json (flow, dns,
+      # stats...) reste complet pour l'investigation, mais ses événements "stats"
+      # dépassent la limite de 256 champs du décodeur JSON de Wazuh.
+      {
+        echo "  - eve-log:"
+        echo "      enabled: yes"
+        echo "      filetype: regular"
+        echo "      filename: alerts.json"
+        echo "      types:"
+        echo "        - alert:"
+        echo "            tagged-packets: no"
+      } > /tmp/eve-alerts.yaml
+      sed -i '/^outputs:/r /tmp/eve-alerts.yaml' /etc/suricata/suricata.yaml
       suricata-update || true
       systemctl enable suricata
       systemctl restart suricata
@@ -59,12 +72,12 @@ write_files:
       WAZUH_MANAGER="${wazuh_manager_ip}" WAZUH_AGENT_NAME="SRV-WEB" \
         apt-get install -y wazuh-agent=${wazuh_version}-1
       apt-mark hold wazuh-agent
-      # Remontée des alertes Suricata : eve.json lu en JSON, règles Suricata natives de Wazuh.
+      # Remontée des alertes Suricata : alerts.json lu en JSON, règles Suricata natives de Wazuh.
       {
         echo "<ossec_config>"
         echo "  <localfile>"
         echo "    <log_format>json</log_format>"
-        echo "    <location>/var/log/suricata/eve.json</location>"
+        echo "    <location>/var/log/suricata/alerts.json</location>"
         echo "  </localfile>"
         echo "</ossec_config>"
       } >> /var/ossec/etc/ossec.conf
