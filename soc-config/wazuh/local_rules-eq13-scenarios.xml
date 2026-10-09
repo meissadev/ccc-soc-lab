@@ -1,0 +1,35 @@
+<!-- EQ13 : regles des scenarios de crise du DAY 3 (rancongiciel et DDoS simules).
+     A ajouter a /var/ossec/etc/rules/local_rules.xml sur le manager (SOC-01).
+     Les descriptions ne contiennent aucun chemin : le titre part tel quel dans IRIS. -->
+
+<!-- Rancongiciel : fichiers renommes en .eq13locked dans C:\EQ13-Simu (FIM, regle 100203) -->
+<group name="eq13,ransomware,">
+  <rule id="100110" level="10">
+    <if_sid>100203</if_sid>
+    <field name="file">\.eq13locked$</field>
+    <description>EQ13 SIMULATION : fichier chiffre par rancongiciel</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+  </rule>
+  <!-- 10 fichiers chiffres en moins de 60 s = chiffrement de masse (niveau 14 => P1) -->
+  <rule id="100111" level="14" frequency="10" timeframe="60">
+    <if_matched_sid>100110</if_matched_sid>
+    <description>EQ13 SIMULATION : chiffrement de masse par rancongiciel</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+  </rule>
+</group>
+
+<!-- DDoS : regle Suricata de seuil sid 9000001 sur SRV-WEB (service de paiement), niveau 12 => P1 -->
+<group name="eq13,ddos,">
+  <rule id="100120" level="12">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">^9000001$</field>
+    <description>EQ13 SIMULATION : afflux HTTP anormal sur le service de paiement</description>
+    <mitre>
+      <id>T1498</id>
+    </mitre>
+  </rule>
+</group>
