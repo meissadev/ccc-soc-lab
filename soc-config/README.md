@@ -43,8 +43,13 @@ sudo /opt/ccc/enable-virustotal.sh
 
 Les empreintes (hash) des fichiers des dossiers surveillés sont envoyées au service VirusTotal.
 
-## Point d'attention
+## Shuffle : workflow « EQ13 - Triage alertes Wazuh »
 
-Le workflow Shuffle insère `$exec.title` tel quel dans le JSON envoyé à IRIS : un titre d'alerte contenant
-un chemin Windows (`c:\users\…`) rend ce JSON invalide (IRIS répond 400). Les règles EQ13 évitent donc les
-chemins dans leurs descriptions ; le chemin reste dans le détail de l'alerte (`all_fields`).
+`wazuh-alerts` → `extraire_ip` → `recherche_misp` → **`preparer_iris`** → `IRIS_v2_1`
+
+| Fichier | Rôle |
+|---|---|
+| `shuffle/preparer_iris.py` | Code du nœud Shuffle Tools « Execute python ». Construit le corps IRIS avec `json.dumps` (JSON toujours valide, même avec des chemins Windows), reprend le résultat MISP (ignoré si l'alerte n'a pas d'IP), ajoute l'IP source comme IOC (type ip-src = 79, TLP amber = 2) et le tag `misp:connu` en cas de correspondance. |
+| `shuffle/update_workflow.py` | Applique ce nœud par l'API Shuffle (`python3 update_workflow.py <clé API admin> preparer_iris.py [--dry-run]`). Sauvegarde le workflow d'origine dans `/root/shuffle-workflow-eq13.backup.json`. |
+
+Le nœud IRIS lit `$preparer_iris.message` : Shuffle Tools renvoie `{"success": …, "message": <sortie du script>}`.

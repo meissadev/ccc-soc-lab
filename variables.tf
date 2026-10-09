@@ -64,13 +64,13 @@ variable "ad_domain" {
 }
 
 # --- VLSM (remarque du jury) ---------------------------------------------------
-# Désactivé par défaut : l'activer recrée les 4 instances (un sous-réseau AWS ne se
-# redimensionne pas). Les IP privées sont conservées, et les machines sont relancées
-# depuis leurs AMI de sauvegarde (instance_amis) pour ne rien perdre de la config SOC.
+# Activé le 9 octobre 2026. Le passage au VLSM a recréé les 4 instances (un sous-réseau
+# AWS ne se redimensionne pas) depuis leurs AMI de sauvegarde (instance_amis), en
+# conservant les IP privées et toute la configuration SOC.
 variable "vlsm_enabled" {
   description = "Plan d'adressage VLSM : soc /26, bank /27, attaque /28, et segmentation fine des groupes de sécurité."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "instance_amis" {
