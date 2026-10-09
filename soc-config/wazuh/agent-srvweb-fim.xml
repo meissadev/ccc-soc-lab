@@ -1,0 +1,6 @@
+<!-- A ajouter a /var/ossec/etc/ossec.conf sur SRV-WEB -->
+<ossec_config>
+  <syscheck>
+    <directories realtime="yes" check_all="yes">/opt/ccc/www</directories>
+  </syscheck>
+</ossec_config>

@@ -35,6 +35,18 @@ resource "aws_subnet" "bank" {
   tags = { Name = "${var.project}-bank" }
 }
 
+# Segment Red Team (VLSM uniquement) : accueille une future machine d'attaque.
+resource "aws_subnet" "attaque" {
+  count = var.vlsm_enabled ? 1 : 0
+
+  vpc_id                  = aws_vpc.lab.id
+  cidr_block              = local.attaque_cidr
+  availability_zone       = var.availability_zone
+  map_public_ip_on_launch = true
+
+  tags = { Name = "${var.project}-attaque" }
+}
+
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.lab.id
 
@@ -53,5 +65,12 @@ resource "aws_route_table_association" "soc" {
 
 resource "aws_route_table_association" "bank" {
   subnet_id      = aws_subnet.bank.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "attaque" {
+  count = var.vlsm_enabled ? 1 : 0
+
+  subnet_id      = aws_subnet.attaque[0].id
   route_table_id = aws_route_table.public.id
 }

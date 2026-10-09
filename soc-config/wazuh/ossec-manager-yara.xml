@@ -1,0 +1,25 @@
+<!-- EQ13 : reponses actives YARA, declenchees par les regles FIM 100200 a 100203 -->
+<ossec_config>
+  <command>
+    <name>yara_linux</name>
+    <executable>yara.sh</executable>
+    <timeout_allowed>no</timeout_allowed>
+  </command>
+  <command>
+    <name>yara_windows</name>
+    <executable>yara.exe</executable>
+    <timeout_allowed>no</timeout_allowed>
+  </command>
+  <active-response>
+    <disabled>no</disabled>
+    <command>yara_linux</command>
+    <location>local</location>
+    <rules_id>100200,100201</rules_id>
+  </active-response>
+  <active-response>
+    <disabled>no</disabled>
+    <command>yara_windows</command>
+    <location>local</location>
+    <rules_id>100202,100203</rules_id>
+  </active-response>
+</ossec_config>

@@ -62,3 +62,19 @@ variable "ad_domain" {
   type        = string
   default     = "kurger.lab"
 }
+
+# --- VLSM (remarque du jury) ---------------------------------------------------
+# Désactivé par défaut : l'activer recrée les 4 instances (un sous-réseau AWS ne se
+# redimensionne pas). Les IP privées sont conservées, et les machines sont relancées
+# depuis leurs AMI de sauvegarde (instance_amis) pour ne rien perdre de la config SOC.
+variable "vlsm_enabled" {
+  description = "Plan d'adressage VLSM : soc /26, bank /27, attaque /28, et segmentation fine des groupes de sécurité."
+  type        = bool
+  default     = false
+}
+
+variable "instance_amis" {
+  description = "AMI de sauvegarde à utiliser par machine (soc01, soc02, dc01, srvweb) lors d'une recréation."
+  type        = map(string)
+  default     = {}
+}

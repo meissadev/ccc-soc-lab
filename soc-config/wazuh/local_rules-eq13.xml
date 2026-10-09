@@ -1,0 +1,36 @@
+<!-- EQ13 : fichiers ajoutes ou modifies dans les dossiers surveilles (declenchent YARA et VirusTotal) -->
+<group name="eq13,syscheck,">
+  <rule id="100200" level="7">
+    <if_sid>550</if_sid>
+    <field name="file">^/opt/ccc/www/</field>
+    <description>EQ13 FIM : fichier modifie dans le site web ($(file))</description>
+  </rule>
+  <rule id="100201" level="7">
+    <if_sid>554</if_sid>
+    <field name="file">^/opt/ccc/www/</field>
+    <description>EQ13 FIM : fichier ajoute dans le site web ($(file))</description>
+  </rule>
+  <rule id="100202" level="7">
+    <if_sid>550</if_sid>
+    <field name="file" type="pcre2">(?i)^c:\\(users\\public\\downloads|eq13-simu)\\</field>
+    <description>EQ13 FIM : fichier modifie dans un dossier surveille de DC01 ($(file))</description>
+  </rule>
+  <rule id="100203" level="7">
+    <if_sid>554</if_sid>
+    <field name="file" type="pcre2">(?i)^c:\\(users\\public\\downloads|eq13-simu)\\</field>
+    <description>EQ13 FIM : fichier ajoute dans un dossier surveille de DC01 ($(file))</description>
+  </rule>
+</group>
+
+<!-- EQ13 : correspondance YARA = fichier malveillant (niveau 12 => P1 vers Shuffle et IRIS) -->
+<group name="eq13,yara,">
+  <rule id="100220" level="0">
+    <decoded_as>yara_decoder</decoded_as>
+    <description>EQ13 YARA : evenement</description>
+  </rule>
+  <rule id="100221" level="12">
+    <if_sid>100220</if_sid>
+    <match>wazuh-yara: INFO - Scan result: </match>
+    <description>EQ13 YARA : fichier malveillant detecte, regle $(yara_rule)</description>
+  </rule>
+</group>

@@ -68,7 +68,8 @@ locals {
 resource "aws_instance" "lab" {
   for_each = local.instances
 
-  ami                    = each.value.ami
+  # AMI de sauvegarde si fournie (recréation sans perte), sinon AMI publique.
+  ami                    = lookup(var.instance_amis, each.key, each.value.ami)
   instance_type          = var.instance_types[each.key]
   subnet_id              = each.value.subnet_id
   private_ip             = local.ip[each.key]
@@ -78,7 +79,8 @@ resource "aws_instance" "lab" {
   # Pas de key pair : accès exclusivement via Session Manager.
   associate_public_ip_address = true
 
-  user_data                   = each.value.user_data
+  # Une machine relancée depuis sa sauvegarde est déjà configurée : pas de cloud-init.
+  user_data                   = contains(keys(var.instance_amis), each.key) ? null : each.value.user_data
   user_data_replace_on_change = true
 
   # Les instances *-flex et t3 en mode "standard" : pas de crédits CPU illimités

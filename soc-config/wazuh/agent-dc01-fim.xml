@@ -1,0 +1,7 @@
+<!-- A ajouter a C:\Program Files (x86)\ossec-agent\ossec.conf sur DC01 -->
+<ossec_config>
+  <syscheck>
+    <directories realtime="yes" check_all="yes">C:\Users\Public\Downloads</directories>
+    <directories realtime="yes" check_all="yes">C:\EQ13-Simu</directories>
+  </syscheck>
+</ossec_config>
