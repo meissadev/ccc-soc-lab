@@ -1,0 +1,15 @@
+<!-- EQ13 : blocage automatique de la source d'un afflux sur le service de paiement (120 s).
+     A ajouter dans /var/ossec/etc/ossec.conf du gestionnaire (SOC-01), avant </ossec_config>.
+     Script cote agent SRV-WEB : /var/ossec/active-response/bin/eq13-block-ip.py (root:wazuh, 750). -->
+  <command>
+    <name>eq13-block-ip</name>
+    <executable>eq13-block-ip.py</executable>
+    <timeout_allowed>yes</timeout_allowed>
+  </command>
+  <active-response>
+    <disabled>no</disabled>
+    <command>eq13-block-ip</command>
+    <location>local</location>
+    <rules_id>100120</rules_id>
+    <timeout>120</timeout>
+  </active-response>
