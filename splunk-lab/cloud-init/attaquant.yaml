@@ -1,0 +1,20 @@
+#cloud-config
+# ATTAQUANT-01 : poste de l'équipe rouge pour le cyber drill (Roland).
+# Outils réseau standard uniquement. Règle du labo : cibles internes au VPC seulement,
+# aucun déni de service réel, aucun scan ni attaque vers l'extérieur.
+hostname: attaquant-01
+preserve_hostname: false
+timezone: UTC
+package_update: true
+packages:
+  - nmap
+  - curl
+  - smbclient
+  - apache2-utils
+  - dnsutils
+  - jq
+write_files:
+  - path: /etc/motd
+    content: |
+      ATTAQUANT-01 (cyber drill EQ-13) - cibles autorisees : 10.20.21.0/27 (DC01 .10, SRV-WEB .30)
+      Interdit : toute cible hors du VPC, tout deni de service reel.
