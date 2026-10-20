@@ -43,12 +43,15 @@ sourcetype = eq13:yara
 [monitor:///var/log/fail2ban.log]
 index = eq13
 sourcetype = fail2ban
+[monitor:///var/log/auth.log]
+index = eq13
+sourcetype = linux_secure
 EOF
 chown -R splunkfwd:splunkfwd $UFH 2>/dev/null || chown -R splunk:splunk $UFH 2>/dev/null || true
 $UFH/bin/splunk enable boot-start -systemd-managed 1 --accept-license --answer-yes --no-prompt > /dev/null 2>&1 || true
 systemctl restart SplunkForwarder 2>/dev/null || $UFH/bin/splunk restart > /dev/null
-# lecture des journaux par le forwarder
-setfacl -m u:splunkfwd:r /var/log/suricata/alerts.json /var/log/fail2ban.log 2>/dev/null || true
+# lecture des journaux par le forwarder (le journal d'authentification alimente la detection de connexion privilegiee)
+setfacl -m u:splunkfwd:r /var/log/suricata/alerts.json /var/log/fail2ban.log /var/log/auth.log 2>/dev/null || true
 
 # 3. Surveillance du dossier Web + YARA (remplace la surveillance de fichiers de l'agent Wazuh)
 apt-get install -y -q inotify-tools fail2ban acl > /dev/null

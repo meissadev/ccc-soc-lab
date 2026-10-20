@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kurger Bank — Espace client</title>
+<style>
+  :root{ --bleu:#0b3c5d; --bleu2:#1d6fa5; --or:#c9a227; --gris:#f4f6f8; --txt:#1b2733; --rouge:#c0392b; }
+  *{box-sizing:border-box} body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--gris);color:var(--txt)}
+  .bandeau{background:linear-gradient(90deg,var(--bleu),var(--bleu2));color:#fff;padding:14px 22px;display:flex;align-items:center;gap:12px}
+  .bandeau .logo{width:34px;height:34px;border-radius:6px;background:var(--or);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--bleu)}
+  .bandeau h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.3px}
+  .wrap{max-width:430px;margin:40px auto;padding:0 16px}
+  .carte{background:#fff;border-radius:10px;box-shadow:0 6px 24px rgba(11,60,93,.12);overflow:hidden}
+  .urgence{background:#fff4f2;border-left:4px solid var(--rouge);color:#7a241c;padding:12px 16px;font-size:13.5px}
+  .corps{padding:26px 28px}
+  .corps h2{margin:0 0 4px;font-size:20px;color:var(--bleu)}
+  .corps p.sous{margin:0 0 20px;color:#5a6b7b;font-size:14px}
+  label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px}
+  input{width:100%;padding:11px 12px;border:1px solid #cdd6df;border-radius:7px;font-size:15px}
+  input:focus{outline:none;border-color:var(--bleu2);box-shadow:0 0 0 3px rgba(29,111,165,.15)}
+  button{width:100%;margin-top:22px;padding:12px;background:var(--bleu);color:#fff;border:0;border-radius:7px;font-size:15px;font-weight:600;cursor:pointer}
+  button:hover{background:var(--bleu2)}
+  .pied{padding:16px 28px;background:#fafbfc;border-top:1px solid #eef1f4;font-size:11.5px;color:#8695a4;text-align:center}
+  .lien{color:var(--bleu2);text-decoration:none}
+  /* page pedagogique */
+  .lecon{display:none;background:#fff;border-radius:10px;box-shadow:0 6px 24px rgba(11,60,93,.12);overflow:hidden}
+  .lecon .haut{background:#b8860b;background:linear-gradient(90deg,#9a7d12,#c9a227);color:#fff;padding:22px 26px}
+  .lecon .haut .big{font-size:40px;line-height:1}
+  .lecon .haut h2{margin:8px 0 0;font-size:22px}
+  .lecon .in{padding:24px 28px}
+  .lecon h3{color:var(--bleu);font-size:16px;margin:18px 0 8px}
+  .lecon ul{margin:0;padding-left:20px} .lecon li{margin:7px 0;font-size:14.5px}
+  .rassure{background:#eef7ee;border-left:4px solid #2e7d32;color:#1e5a24;padding:12px 16px;border-radius:6px;margin-top:18px;font-size:14px}
+  .tag{display:inline-block;background:#eef2f6;color:#5a6b7b;font-size:11px;border-radius:20px;padding:3px 10px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="bandeau"><div class="logo">K</div><h1>Kurger Bank — Espace client sécurisé</h1></div>
+
+<div class="wrap">
+  <!-- Fausse page de connexion (hameçonnage simulé) -->
+  <div class="carte" id="portail">
+    <div class="urgence">⚠ Activité inhabituelle détectée. Votre accès sera <b>suspendu sous 24 h</b> si vous ne confirmez pas vos identifiants.</div>
+    <div class="corps">
+      <h2>Connexion</h2>
+      <p class="sous">Accédez à vos comptes et validez la sécurité de votre session.</p>
+      <form id="f" autocomplete="off">
+        <label for="u">Identifiant ou e-mail</label>
+        <input type="text" id="u" name="u" placeholder="prenom.nom@kurgerbank-secure.com">
+        <label for="p">Mot de passe</label>
+        <input type="password" id="p" name="p" placeholder="Votre mot de passe">
+        <button type="submit">Confirmer mon identité</button>
+      </form>
+    </div>
+    <div class="pied">© Kurger Bank Ltd · <a class="lien" href="#">Mot de passe oublié ?</a> · <a class="lien" href="#">Aide</a></div>
+  </div>
+
+  <!-- Page pedagogique (revelation) -->
+  <div class="lecon" id="lecon">
+    <div class="haut"><div class="big">🎣</div><h2>C'était un exercice de sensibilisation</h2></div>
+    <div class="in">
+      <p>Vous venez de saisir vos identifiants sur une <b>page d'hameçonnage simulée</b>, dans le cadre du programme
+         <b>Alpha Cyber-Vigilance</b> de la banque. <b>Rassurez-vous : aucun mot de passe n'a été transmis ni enregistré.</b></p>
+
+      <h3>Les indices qui auraient dû vous alerter</h3>
+      <ul>
+        <li><b>L'adresse du site</b> n'est pas le vrai domaine de la banque (ici <code>kurgerbank-secure.com</code> au lieu du domaine officiel).</li>
+        <li><b>L'urgence et la menace</b> : « suspendu sous 24 h ». Un vrai service ne vous presse pas ainsi.</li>
+        <li><b>La demande de mot de passe</b> par un lien reçu par e-mail : la banque ne le demande jamais de cette façon.</li>
+        <li><b>Des formulations</b> vagues ou alarmistes, une mise en page « presque » officielle.</li>
+      </ul>
+
+      <h3>Le bon réflexe</h3>
+      <ul>
+        <li>Ne cliquez pas, ne saisissez rien.</li>
+        <li>Signalez le message avec le bouton <b>« Signaler »</b> de la messagerie : il part directement au SOC.</li>
+        <li>En cas de doute, contactez le service informatique par un canal connu.</li>
+      </ul>
+
+      <div class="rassure">✅ Signaler un message suspect n'est jamais une faute : c'est une réussite. Chaque signalement aide le SOC à protéger toute la banque.</div>
+      <div class="tag">Simulation EQ-13 · Alpha Cyber-Vigilance · aucune donnée collectée</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Hameçonnage simule : a la soumission, on NE TRANSMET NI N'ENREGISTRE rien.
+  // On efface les champs et on affiche la page pedagogique.
+  document.getElementById('f').addEventListener('submit', function(e){
+    e.preventDefault();
+    document.getElementById('p').value = '';
+    document.getElementById('u').value = '';
+    document.getElementById('portail').style.display = 'none';
+    document.getElementById('lecon').style.display = 'block';
+    window.scrollTo(0,0);
+  });
+</script>
+</body>
+</html>

@@ -120,6 +120,27 @@ alert.suppress = 1
 alert.suppress.fields = host
 alert.suppress.period = 120s
 alert.severity = 6
+
+[EQ13 P2 - Connexion privilegiee depuis une machine inhabituelle]
+dispatch.earliest_time = rt-60s
+dispatch.latest_time = rt
+enableSched = 1
+cron_schedule = * * * * *
+alert.track = 1
+action.webhook = 1
+action.webhook.param.url = $HOOK
+actions = webhook
+search = index=eq13 sourcetype=linux_secure (Accepted) \
+| rex "Accepted \w+ for (?<compte>\S+) from (?<src_ip>\d{1,3}(\.\d{1,3}){3})" \
+| where isnotnull(src_ip) AND cidrmatch("10.20.50.0/28", src_ip) \
+| eval eq13_ip_attaquant=src_ip, eq13_priority="P2", eq13_iris_severity_id=5, eq13_title="Connexion privilegiee depuis une machine inhabituelle", eq13_detail="Compte ".compte." connecte en SSH depuis ".src_ip." (segment d'attaque, MITRE T1078)" \
+| table _time host compte src_ip eq13_ip_attaquant eq13_priority eq13_iris_severity_id eq13_title eq13_detail
+alert_type = always
+alert.digest_mode = 0
+alert.suppress = 1
+alert.suppress.fields = compte,src_ip
+alert.suppress.period = 120s
+alert.severity = 5
 EOF
 chown -R splunk:splunk $APP
 /opt/splunk/bin/splunk btool savedsearches list --app=eq13 2>/dev/null | grep -c "^\[EQ13"

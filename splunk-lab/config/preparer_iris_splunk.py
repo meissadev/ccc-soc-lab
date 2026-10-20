@@ -1,6 +1,7 @@
 # Noeud Shuffle "preparer_iris" (EQ13, lab Splunk) : construit le corps de l'alerte IRIS a partir
 # d'une alerte Splunk (action webhook : {"result": {...}, "search_name", "sid", "results_link"}).
-# - JSON toujours valide (json.dumps) ; resultat MISP repris ; IP de l'attaquant presume (calculee par Splunk) ajoutee comme IOC.
+# - JSON toujours valide (json.dumps) ; resultat MISP et VirusTotal repris ; IP de l'attaquant presume
+#   (calculee par Splunk) et hachage du fichier ajoutes comme IOC.
 import json, re
 
 def charge(texte, defaut):
@@ -15,11 +16,15 @@ ip = r'''$extraire_ip'''.strip()
 if not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", ip):
     ip = ""
 misp = charge(r'''$recherche_misp''', {})
+vt = charge(r'''$virustotal''', {})
 
 machine = resultat.get("host", "inconnue")
 priorite = resultat.get("eq13_priority", "P?")
 titre = resultat.get("eq13_title") or alerte.get("search_name", "Alerte Splunk")
 detail = resultat.get("eq13_detail", "")
+sha256 = (resultat.get("sha256") or "").strip().lower()
+if not re.fullmatch(r"[0-9a-f]{64}", sha256):
+    sha256 = ""
 
 correspondances = []
 if ip:
@@ -36,14 +41,36 @@ elif correspondances:
 else:
     note_misp = "MISP : IP %s inconnue" % ip
 
+# VirusTotal : reputation du hachage du fichier (alertes YARA)
+note_vt = ""
+vt_malveillant = 0
+if sha256:
+    corps_vt = vt.get("body") if isinstance(vt, dict) else None
+    attributs_vt = (((corps_vt or {}).get("data") or {}).get("attributes") or {}) if isinstance(corps_vt, dict) else {}
+    stats = attributs_vt.get("last_analysis_stats")
+    if isinstance(stats, dict):
+        vt_malveillant = stats.get("malicious", 0)
+        total = sum(v for v in stats.values() if isinstance(v, int)) or 1
+        note_vt = "VirusTotal : %d/%d moteurs detectent ce fichier comme malveillant" % (vt_malveillant, total)
+    else:
+        note_vt = "VirusTotal : hachage inconnu du service"
+
 tags = ["source:splunk", "eq13:lab", priorite]
 if correspondances:
     tags.append("misp:connu")
+if vt_malveillant:
+    tags.append("virustotal:malveillant")
+
+description = "Machine : %s\nRecherche Splunk : %s\nDetail : %s\nIP de l'attaquant presume : %s (flux %s -> %s)\n%s" % (
+    machine, alerte.get("search_name", "?"), detail or "-", ip or "-", resultat.get("src_ip", "-"), resultat.get("dest_ip", "-"), note_misp)
+if sha256:
+    description += "\nFichier (SHA-256) : %s\n%s" % (sha256, note_vt)
+
+note = note_misp + (("\n" + note_vt) if note_vt else "")
 
 corps_iris = {
     "alert_title": "[EQ13] %s - %s" % (priorite, titre),
-    "alert_description": "Machine : %s\nRecherche Splunk : %s\nDetail : %s\nIP de l'attaquant presume : %s (flux %s -> %s)\n%s" % (
-        machine, alerte.get("search_name", "?"), detail or "-", ip or "-", resultat.get("src_ip", "-"), resultat.get("dest_ip", "-"), note_misp),
+    "alert_description": description,
     "alert_source": "Splunk",
     "alert_source_ref": str(alerte.get("sid", "")),
     "alert_source_link": alerte.get("results_link", ""),
@@ -51,7 +78,7 @@ corps_iris = {
     "alert_status_id": 2,
     "alert_customer_id": 2,
     "alert_tags": ",".join(tags),
-    "alert_note": note_misp,
+    "alert_note": note,
     "alert_source_content": resultat,
     "alert_iocs": [],
 }
@@ -61,6 +88,14 @@ if ip:
         "ioc_type_id": 79,
         "ioc_tlp_id": 2,
         "ioc_description": "IP de l'attaquant presume (alerte Splunk). " + note_misp,
+        "ioc_tags": "source:splunk,eq13:lab",
+    })
+if sha256:
+    corps_iris["alert_iocs"].append({
+        "ioc_value": sha256,
+        "ioc_type_id": 113,
+        "ioc_tlp_id": 2,
+        "ioc_description": "Hachage du fichier detecte par YARA. " + (note_vt or "VirusTotal non interroge"),
         "ioc_tags": "source:splunk,eq13:lab",
     })
 
